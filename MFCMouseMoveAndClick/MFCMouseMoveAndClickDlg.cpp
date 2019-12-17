@@ -15,6 +15,8 @@
 // Global Variables
 CMFCMouseMoveAndClickDlg* _pDlg;
 HHOOK _hMouseHook;
+HHOOK _hKeyboardHook;
+BOOL _bEnable;
 
 // CAboutDlg dialog used for App About
 
@@ -82,6 +84,19 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
 }
 
+LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (wParam == WM_KEYDOWN) {
+		KBDLLHOOKSTRUCT* pKey = (KBDLLHOOKSTRUCT*)lParam;
+		if (pKey->vkCode == VK_F5) {
+			_bEnable ^= 1;
+			CString csTemp;
+			csTemp.Format((_bEnable) ? L"Enable" : L"Disable");
+			_pDlg->SetWindowText(csTemp.GetString());
+		}
+	}
+	return CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);
+}
+
 // CMFCMouseMoveAndClickDlg message handlers
 
 BOOL CMFCMouseMoveAndClickDlg::OnInitDialog()
@@ -117,6 +132,7 @@ BOOL CMFCMouseMoveAndClickDlg::OnInitDialog()
 	_pDlg = this;
 	HMODULE hInstance = GetModuleHandle(NULL);
 	_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0);
+	_hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProc, hInstance, 0);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -125,6 +141,7 @@ void CMFCMouseMoveAndClickDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
 	if ((nID & 0xFFF0) == SC_CLOSE) {
 		UnhookWindowsHookEx(_hMouseHook);
+		UnhookWindowsHookEx(_hKeyboardHook);
 	}
 	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
 	{
