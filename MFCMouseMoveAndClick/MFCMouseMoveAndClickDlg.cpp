@@ -93,17 +93,28 @@ void CALLBACK EXPORT TimerProc(HWND hWnd, UINT nMsg, UINT nTimerid, DWORD dwTime
 	if (nTimerid == TIMER_ID) {
 		KillTimer(_pDlg->m_hWnd, TIMER_ID);
 
-		const double XSCALEFACTOR = 65535 / (GetSystemMetrics(SM_CXSCREEN) - 1);
-		const double YSCALEFACTOR = 65535 / (GetSystemMetrics(SM_CYSCREEN) - 1);
-		double nx = _pNextMouse.x * XSCALEFACTOR;
-		double ny = _pNextMouse.y * YSCALEFACTOR;
+		int iScreenWidth = ::GetSystemMetrics(SM_CXSCREEN) - 1;
+		int iScreenHeight = ::GetSystemMetrics(SM_CYSCREEN) - 1;
+		double fx = _pNextMouse.x * (65535.0f / (double)iScreenWidth);
+		double fy = _pNextMouse.y * (65535.0f / (double)iScreenHeight);
+
 		INPUT input = { 0 };
 		input.type = INPUT_MOUSE;
-		input.mi.dx = (LONG)nx;
-		input.mi.dy = (LONG)ny;
-		input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
+		input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+		input.mi.dx = (LONG)fx;
+		input.mi.dy = (LONG)fy;
 		SendInput(1, &input, sizeof(INPUT));
 
+		RtlZeroMemory(&input, sizeof(INPUT));
+		input.type = INPUT_MOUSE;
+		input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+		::SendInput(1, &input, sizeof(INPUT));
+
+		RtlZeroMemory(&input, sizeof(INPUT));
+		input.type = INPUT_MOUSE;
+		input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+		::SendInput(1, &input, sizeof(INPUT));
+		
 		_pNextMouse.x = _pStartMouse.x + _uidMousePoint(_gen);
 		_pNextMouse.y = _pStartMouse.y + _uidMousePoint(_gen);
 		CString csTemp;
@@ -119,7 +130,7 @@ void CALLBACK EXPORT TimerProc(HWND hWnd, UINT nMsg, UINT nTimerid, DWORD dwTime
 }
 
 LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
-	if (wParam == WM_MOUSEMOVE) {
+	if (wParam == WM_MOUSEMOVE || wParam == WM_LBUTTONDOWN) {
 		GetCursorPos(&_pCurrnetMouse);
 		CString csTemp;
 		csTemp.Format(L"Current Mouse: %d, %d", _pCurrnetMouse.x, _pCurrnetMouse.y);
