@@ -14,7 +14,7 @@
 #endif
 
 #define TIMER_ID						8
-#define TIMER_ELAPSE_MIN				1000
+#define TIMER_ELAPSE_MIN				100
 #define TIMER_ELAPSE_MAX				10000
 #define MOUSE_POINT_RANDOM_RANGE		10
 
@@ -92,14 +92,28 @@ END_MESSAGE_MAP()
 void CALLBACK EXPORT TimerProc(HWND hWnd, UINT nMsg, UINT nTimerid, DWORD dwTime) {
 	if (nTimerid == TIMER_ID) {
 		KillTimer(_pDlg->m_hWnd, TIMER_ID);
+
+		const double XSCALEFACTOR = 65535 / (GetSystemMetrics(SM_CXSCREEN) - 1);
+		const double YSCALEFACTOR = 65535 / (GetSystemMetrics(SM_CYSCREEN) - 1);
+		double nx = _pNextMouse.x * XSCALEFACTOR;
+		double ny = _pNextMouse.y * YSCALEFACTOR;
+		INPUT input = { 0 };
+		input.type = INPUT_MOUSE;
+		input.mi.dx = (LONG)nx;
+		input.mi.dy = (LONG)ny;
+		input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
+		SendInput(1, &input, sizeof(INPUT));
+
 		_pNextMouse.x = _pStartMouse.x + _uidMousePoint(_gen);
 		_pNextMouse.y = _pStartMouse.y + _uidMousePoint(_gen);
 		CString csTemp;
 		csTemp.Format(L"Next Mouse: %d, %d", _pNextMouse.x, _pNextMouse.y);
 		::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_NEXT_MOUSE), csTemp.GetString());
+
 		UINT uTimeElapse = _uidTimerElapse(_gen);
 		csTemp.Format(L"Time Elapse: %d ms", uTimeElapse);
 		::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_TIMER_ELAPSE), csTemp.GetString());
+
 		SetTimer(_pDlg->m_hWnd, TIMER_ID, uTimeElapse, TimerProc);
 	}
 }
@@ -125,6 +139,7 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 			if (_bEnable) {
 				_pStartMouse = _pCurrnetMouse;
+				_pNextMouse = _pCurrnetMouse;
 				CString csTemp;
 				csTemp.Format(L"Start Mouse: %d, %d", _pStartMouse.x, _pStartMouse.y);
 				::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_START_MOUSE), csTemp.GetString());
