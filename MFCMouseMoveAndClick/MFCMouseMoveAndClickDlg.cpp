@@ -12,6 +12,9 @@
 #define new DEBUG_NEW
 #endif
 
+// Global Variables
+CMFCMouseMoveAndClickDlg* _pDlg;
+HHOOK _hMouseHook;
 
 // CAboutDlg dialog used for App About
 
@@ -59,6 +62,7 @@ CMFCMouseMoveAndClickDlg::CMFCMouseMoveAndClickDlg(CWnd* pParent /*=nullptr*/)
 void CMFCMouseMoveAndClickDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_STATIC_CURRENT_MOUSE, CStatic_Current_Mouse);
 }
 
 BEGIN_MESSAGE_MAP(CMFCMouseMoveAndClickDlg, CDialogEx)
@@ -67,6 +71,16 @@ BEGIN_MESSAGE_MAP(CMFCMouseMoveAndClickDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 END_MESSAGE_MAP()
 
+LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (wParam == WM_MOUSEMOVE) {
+		POINT p;
+		GetCursorPos(&p);
+		CString csTemp;
+		csTemp.Format(L"Current Mouse: %d, %d", p.x, p.y);
+		::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_CURRENT_MOUSE), csTemp.GetString());
+	}
+	return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
+}
 
 // CMFCMouseMoveAndClickDlg message handlers
 
@@ -100,12 +114,18 @@ BOOL CMFCMouseMoveAndClickDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+	_pDlg = this;
+	HMODULE hInstance = GetModuleHandle(NULL);
+	_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
 void CMFCMouseMoveAndClickDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
+	if ((nID & 0xFFF0) == SC_CLOSE) {
+		UnhookWindowsHookEx(_hMouseHook);
+	}
 	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
 	{
 		CAboutDlg dlgAbout;
