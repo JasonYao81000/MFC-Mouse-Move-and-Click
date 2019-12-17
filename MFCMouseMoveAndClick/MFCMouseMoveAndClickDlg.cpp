@@ -7,16 +7,28 @@
 #include "MFCMouseMoveAndClick.h"
 #include "MFCMouseMoveAndClickDlg.h"
 #include "afxdialogex.h"
+#include <random>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+#define TIMER_ID						8
+#define TIMER_ELAPSE_MIN				1000
+#define TIMER_ELAPSE_MAX				10000
+#define MOUSE_POINT_RANDOM_RANGE		10
 
 // Global Variables
 CMFCMouseMoveAndClickDlg* _pDlg;
 HHOOK _hMouseHook;
 HHOOK _hKeyboardHook;
 BOOL _bEnable;
+POINT _pCurrnetMouse;
+POINT _pStartMouse;
+POINT _pNextMouse;
+std::mt19937 _gen;
+std::uniform_int_distribution<> _uidTimerElapse;
+std::uniform_int_distribution<> _uidMousePoint;
 
 // CAboutDlg dialog used for App About
 
@@ -65,6 +77,10 @@ void CMFCMouseMoveAndClickDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_STATIC_CURRENT_MOUSE, CStatic_Current_Mouse);
+	DDX_Control(pDX, IDC_STATIC_NEXT_MOUSE, CStatic_Next_Mouse);
+	DDX_Control(pDX, IDC_STATIC_START_MOUSE, CStatic_Start_Mouse);
+	DDX_Control(pDX, IDC_STATIC_START_MOUSE, CStatic_Start_Mouse);
+	DDX_Control(pDX, IDC_STATIC_TIMER_ELAPSE, CStatic_Timer_Elapse);
 }
 
 BEGIN_MESSAGE_MAP(CMFCMouseMoveAndClickDlg, CDialogEx)
@@ -73,12 +89,26 @@ BEGIN_MESSAGE_MAP(CMFCMouseMoveAndClickDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 END_MESSAGE_MAP()
 
+void CALLBACK EXPORT TimerProc(HWND hWnd, UINT nMsg, UINT nTimerid, DWORD dwTime) {
+	if (nTimerid == TIMER_ID) {
+		KillTimer(_pDlg->m_hWnd, TIMER_ID);
+		_pNextMouse.x = _pStartMouse.x + _uidMousePoint(_gen);
+		_pNextMouse.y = _pStartMouse.y + _uidMousePoint(_gen);
+		CString csTemp;
+		csTemp.Format(L"Next Mouse: %d, %d", _pNextMouse.x, _pNextMouse.y);
+		::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_NEXT_MOUSE), csTemp.GetString());
+		UINT uTimeElapse = _uidTimerElapse(_gen);
+		csTemp.Format(L"Time Elapse: %d ms", uTimeElapse);
+		::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_TIMER_ELAPSE), csTemp.GetString());
+		SetTimer(_pDlg->m_hWnd, TIMER_ID, uTimeElapse, TimerProc);
+	}
+}
+
 LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (wParam == WM_MOUSEMOVE) {
-		POINT p;
-		GetCursorPos(&p);
+		GetCursorPos(&_pCurrnetMouse);
 		CString csTemp;
-		csTemp.Format(L"Current Mouse: %d, %d", p.x, p.y);
+		csTemp.Format(L"Current Mouse: %d, %d", _pCurrnetMouse.x, _pCurrnetMouse.y);
 		::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_CURRENT_MOUSE), csTemp.GetString());
 	}
 	return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
@@ -92,6 +122,17 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 			CString csTemp;
 			csTemp.Format((_bEnable) ? L"Enable" : L"Disable");
 			_pDlg->SetWindowText(csTemp.GetString());
+
+			if (_bEnable) {
+				_pStartMouse = _pCurrnetMouse;
+				CString csTemp;
+				csTemp.Format(L"Start Mouse: %d, %d", _pStartMouse.x, _pStartMouse.y);
+				::SetWindowText(::GetDlgItem(_pDlg->m_hWnd, IDC_STATIC_START_MOUSE), csTemp.GetString());
+				SetTimer(_pDlg->m_hWnd, TIMER_ID, 0, TimerProc);
+			}
+			else {
+				KillTimer(_pDlg->m_hWnd, TIMER_ID);
+			}
 		}
 	}
 	return CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);
@@ -133,6 +174,12 @@ BOOL CMFCMouseMoveAndClickDlg::OnInitDialog()
 	HMODULE hInstance = GetModuleHandle(NULL);
 	_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0);
 	_hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProc, hInstance, 0);
+
+	// Random integer generator
+	std::random_device rd;
+	_gen = std::mt19937(rd());
+	_uidTimerElapse = std::uniform_int_distribution<>(TIMER_ELAPSE_MIN, TIMER_ELAPSE_MAX);
+	_uidMousePoint = std::uniform_int_distribution<>(0, MOUSE_POINT_RANDOM_RANGE);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }

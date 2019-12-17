@@ -8,6 +8,9 @@
 #define IDD_MFCMOUSEMOVEANDCLICK_DIALOG 102
 #define IDR_MAINFRAME                   128
 #define IDC_STATIC_CURRENT_MOUSE        1000
+#define IDC_STATIC_START_MOUSE          1001
+#define IDC_STATIC_NEXT_MOUSE           1002
+#define IDC_STATIC_TIMER_ELAPSE         1003
 
 // Next default values for new objects
 // 

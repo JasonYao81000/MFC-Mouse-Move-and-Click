@@ -33,4 +33,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	CStatic CStatic_Current_Mouse;
+	CStatic CStatic_Next_Mouse;
+	CStatic CStatic_Start_Mouse;
+	CStatic CStatic_Timer_Elapse;
 };
